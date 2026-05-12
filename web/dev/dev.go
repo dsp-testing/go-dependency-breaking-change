@@ -1,6 +1,8 @@
 package dev
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jakecoffman/stldevs/db"
 	"github.com/jakecoffman/stldevs/sessions"
@@ -36,10 +38,27 @@ func List(c *gin.Context) {
 }
 
 func Get(c *gin.Context) {
-	profile, err := db.Profile(c.Params.ByName("login"))
+	login := c.Params.ByName("login")
+	profile, err := db.Profile(login)
 	if err != nil {
 		c.JSON(404, "Failed to find user")
 		return
+	}
+	// If the user has chosen to be hidden, only admins or the user themselves
+	// can view the profile. Everyone else gets a 404.
+	if profile.User != nil && profile.User.Hide {
+		allowed := false
+		if cookie, err := c.Cookie(sessions.Cookie); err == nil && cookie != "" {
+			if entry, ok := sessions.Store.Get(cookie); ok && entry.User != nil {
+				if entry.User.IsAdmin || (entry.User.Login != nil && strings.EqualFold(*entry.User.Login, login)) {
+					allowed = true
+				}
+			}
+		}
+		if !allowed {
+			c.JSON(404, "Failed to find user")
+			return
+		}
 	}
 	c.JSON(200, profile)
 }

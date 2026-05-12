@@ -170,7 +170,8 @@ type ProfileData struct {
 }
 
 var Profile = func(name string) (*ProfileData, error) {
-	// TODO hide the user when other users try to see them but they are set to "Hide" in db
+	// Note: this returns hidden users too; callers are responsible for
+	// gating access (e.g. only admin or the user themselves).
 
 	// There are 2 queries to do so run them concurrently
 	userCh := make(chan *StlDevsUser)
